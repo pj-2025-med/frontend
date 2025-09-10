@@ -1,13 +1,14 @@
 // src/services/annotation.ts
 import { annotation } from "@cornerstonejs/tools";
 import { API_ROOT } from "@/config/api";
-import type { AnnotationBundlePayload, ArrowAnnotationData } from "@/types/annotation";
+import type { AnnotationBundlePayload, AnyAnnotation } from "@/types/annotation";
 import { getRenderingEngine } from "@cornerstonejs/core";
 
 /* ============ 유틸 ============ */
+/*
 function pickArrow(ann: any): ann is ArrowAnnotationData {
   return ann?.metadata?.toolName === "ArrowAnnotate" || ann?.toolName === "ArrowAnnotate";
-}
+}*/
 
 function makeUid() {
   return (typeof crypto !== "undefined" && crypto.randomUUID)
@@ -16,6 +17,7 @@ function makeUid() {
 }
 
 /* ============ Export ============ */
+/*
 export function exportArrowAnnotations(): ArrowAnnotationData[] {
   const all = annotation.state.getAllAnnotations(); // 모든 툴 포함
   const arrows: ArrowAnnotationData[] = all
@@ -28,7 +30,63 @@ export function exportArrowAnnotations(): ArrowAnnotationData[] {
       metadata: a.metadata ?? {},
     }));
   return arrows;
+}*/
+
+// toolName 보강
+function ensureToolName(a: AnyAnnotation, fallback?: string): AnyAnnotation {
+  const tn = a?.metadata?.toolName ?? a?.toolName ?? fallback;
+  if (tn) {
+    a.toolName = tn;
+    a.metadata = a.metadata || {};
+    a.metadata.toolName = tn;
+  }
+  return a;
 }
+
+// 저장 전에 최소 보정(이미지ID 채우기 등)
+function normalizeAnnotation(a: AnyAnnotation, fallbackImageId?: string): AnyAnnotation {
+  ensureToolName(a);
+  if (!a.referencedImageId && a?.metadata?.referencedImageId) {
+    a.referencedImageId = a.metadata.referencedImageId;
+  }
+  if (!a.referencedImageId && fallbackImageId) {
+    a.referencedImageId = fallbackImageId;
+  }
+  return a;
+}
+
+// getAllAnnotations 없는 환경까지 고려한 안전 수집
+function getAllSupportedAnnotations(toolNames?: string[]): AnyAnnotation[] {
+  const out: AnyAnnotation[] = [];
+  const getAll = (annotation.state as any).getAllAnnotations;
+  if (typeof getAll === 'function') {
+    try {
+      const arr = getAll();
+      for (const a of arr ?? []) out.push(ensureToolName(a));
+      return out;
+    } catch {}
+  }
+  // fallback: 툴 리스트가 있으면 툴별 조회
+  if (toolNames?.length) {
+    for (const t of toolNames) {
+      try {
+        const arr =
+          (annotation.state as any).getAnnotations?.(t, { annotationGroupSelector: undefined }) ??
+          (annotation.state as any).getAnnotations?.(t);
+        if (Array.isArray(arr)) for (const a of arr) out.push(ensureToolName(a, t));
+      } catch {}
+    }
+  }
+  return out;
+}
+
+// 🔹 새로 추가: 멀티툴 전체 export
+export function exportAllAnnotations(toolNames?: string[]): AnyAnnotation[] {
+  return getAllSupportedAnnotations(toolNames);
+}
+
+
+
 
 /* ============ Save to Server ============ */
 export async function saveAnnotationsToServer(payload: AnnotationBundlePayload) {
@@ -56,18 +114,23 @@ export async function saveAnnotationsToServer(payload: AnnotationBundlePayload) 
     }
   }
 
-  const { currentImageId, annotations } = payload;
+  const { currentImageId } = payload;
 
-  const groupedByImageId: Record<string, ArrowAnnotationData[]> = {};
-  if (annotations.length > 0) {
-    annotations.reduce((acc, ann) => {
+  const normalized: AnyAnnotation[] = (payload.annotations ?? [])
+  .map(a => normalizeAnnotation(a, currentImageId))
+  .map(a => ensureToolName(a));
+
+  const groupedByImageId: Record<string, AnyAnnotation[]> = {};
+  if (normalized.length > 0) {
+    normalized.reduce((acc, ann) => {
       const imageId = ann.referencedImageId;
       if (!imageId) {
         console.warn("Annotation without referencedImageId found, skipping:", ann);
         return acc;
       }
-      if (!acc[imageId]) acc[imageId] = [];
-      acc[imageId].push(ann);
+      //if (!acc[imageId]) acc[imageId] = [];
+      //acc[imageId].push(ann);
+      (acc[imageId] ||= []).push(ann);
       return acc;
     }, groupedByImageId);
   } else if (currentImageId) {
@@ -198,7 +261,7 @@ export async function fetchAnnotationsFromServer(params: {
       studyKey,
       seriesKey,
       imageIdScope: "image" as const,
-      annotations: annotationsArr,
+      annotations: (annotationsArr ?? []).map(a => ensureToolName(a)),
       savedAt: (raw as any).savedAt ?? new Date().toISOString(),
     };
 
@@ -259,7 +322,7 @@ export function injectBundleIntoViewportWithScope(
   for (const raw of annos || []) {
     const a = JSON.parse(JSON.stringify(raw));
     a.annotationUID = makeUid();
-    a.toolName = a.toolName || "ArrowAnnotate";
+    ensureToolName(a, 'ArrowAnnotate');
 
     a.metadata = {
       ...(a.metadata ?? {}),

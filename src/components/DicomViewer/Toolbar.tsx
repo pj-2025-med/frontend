@@ -9,7 +9,7 @@ import {
 } from '@cornerstonejs/tools';
 import { getRenderingEngine } from '@cornerstonejs/core';
 import {
-  exportArrowAnnotations,
+  exportAllAnnotations,
   fetchAnnotationsFromServer,
   injectBundleIntoViewportWithScope,
   saveAnnotationsToServer,
@@ -181,7 +181,7 @@ export default function Toolbar({
         return;
       }
 
-      const annotations = exportArrowAnnotations();
+      const annotations = exportAllAnnotations(ANNOTATION_TOOLS);
 
       await saveAnnotationsToServer({
         studyKey,
@@ -189,7 +189,7 @@ export default function Toolbar({
         imageIdScope: 'image',
         annotations,
         savedAt: new Date().toISOString(),
-        currentImageId: currentImageId
+        currentImageId,
       });
       alert('주석이 저장되었습니다.');
     } catch (e: any) {
@@ -249,7 +249,12 @@ export default function Toolbar({
         return;
       }
 
-      injectBundleIntoViewportWithScope(bundle, renderingEngineId, viewportId);
+      //injectBundleIntoViewportWithScope(bundle, renderingEngineId, viewportId);
+      injectBundleIntoViewportWithScope(
+        bundle,
+        renderingEngineId,
+        viewportId
+      )
       alert('주석을 불러왔습니다.');
     } catch (e: any) {
       console.error('Annotation 불러오기 중 오류 발생:', e);

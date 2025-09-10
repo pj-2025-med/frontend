@@ -3,7 +3,16 @@ import * as React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { RenderingEngine, Enums } from "@cornerstonejs/core";
 import { Button } from "@/components/ui/button";
-import { ToolGroupManager, ArrowAnnotateTool } from "@cornerstonejs/tools";
+import {
+  ToolGroupManager,
+  ArrowAnnotateTool,
+  LengthTool,
+  RectangleROITool,
+  EllipticalROITool,
+  AngleTool,
+  ProbeTool,
+  BidirectionalTool,
+} from "@cornerstonejs/tools";
 import { ensureCornerstoneReady } from "@/hooks/bootstrap";
 import { installScopedAnnotationFilterOnce } from "./annotationsFilter";
 import {
@@ -116,12 +125,23 @@ type CompareViewProps = {
 };
 
 function AnnotationPreview({ side, bundleJson, onReady }: CompareViewProps) {
+
+  const PREVIEW_TOOL = [
+    ArrowAnnotateTool.toolName,
+    LengthTool.toolName,
+    RectangleROITool.toolName,
+    EllipticalROITool.toolName,
+    AngleTool.toolName,
+    ProbeTool.toolName,
+    BidirectionalTool.toolName,
+  ]
+  
   const hostRef = useRef<HTMLDivElement | null>(null);
   const ranRef = useRef(false);
 
-  const engineId   = useRef(`anno-prev-engine-${side}-${Math.random().toString(36).slice(2)}`).current;
+  const engineId = useRef(`anno-prev-engine-${side}-${Math.random().toString(36).slice(2)}`).current;
   const viewportId = useRef(`anno-prev-vp-${side}-${Math.random().toString(36).slice(2)}`).current;
-  const toolGroupId= useRef(`anno-prev-tg-${side}-${Math.random().toString(36).slice(2)}`).current;
+  const toolGroupId = useRef(`anno-prev-tg-${side}-${Math.random().toString(36).slice(2)}`).current;
 
   const elementRef = useRef<HTMLDivElement | null>(null);
   const previewIdRef = useRef<string>("");
@@ -167,10 +187,19 @@ function AnnotationPreview({ side, bundleJson, onReady }: CompareViewProps) {
       let tg = ToolGroupManager.getToolGroup(toolGroupId);
       if (!tg) tg = ToolGroupManager.createToolGroup(toolGroupId)!;
 
+      for (const name of PREVIEW_TOOL) {
+        try {
+          if (!tg.getToolInstance?.(name)) tg.addTool(name);
+          tg.setToolPassive(name);
+        } catch (e) {
+          console.warn(`[Preview] failed to attach tool`, name, e);
+        }
+      }
+      /*
       if (!tg.getToolInstance?.(ArrowAnnotateTool.toolName)) {
         tg.addTool(ArrowAnnotateTool.toolName);
       }
-      tg.setToolPassive(ArrowAnnotateTool.toolName);
+      tg.setToolPassive(ArrowAnnotateTool.toolName);*/
       tg.addViewport(viewportId, engineId);
 
       const vp: any = re.getViewport(viewportId);
@@ -189,24 +218,24 @@ function AnnotationPreview({ side, bundleJson, onReady }: CompareViewProps) {
 
     return () => {
       // 1) element/toolGroupId 기준 삭제
-      try { removeAnnotationsScoped({ element: elementRef.current ?? undefined, toolGroupId }); } catch {}
+      try { removeAnnotationsScoped({ element: elementRef.current ?? undefined, toolGroupId }); } catch { }
 
       // 2) referencedImageId( ?vp=left|right ) 기준 추가 삭제 (혹시 남은 것 대비)
       try {
         const frag = `vp=${side}`;
         removeAnnotationsByImageIdIncludes(frag);
-      } catch {}
+      } catch { }
 
       // 3) 소유권 없는 잔여 주석 정리
-      try { purgeUnscopedAnnotations(); } catch {}
+      try { purgeUnscopedAnnotations(); } catch { }
 
       // 4) 뷰포트/툴그룹/엔진 종료
-      try { ToolGroupManager.getToolGroup(toolGroupId)?.removeViewports(viewportId, engineId); } catch {}
-      try { ToolGroupManager.destroyToolGroup(toolGroupId); } catch {}
-      try { re?.disableElement(viewportId); } catch {}
-      try { re?.destroy?.(); } catch {}
+      try { ToolGroupManager.getToolGroup(toolGroupId)?.removeViewports(viewportId, engineId); } catch { }
+      try { ToolGroupManager.destroyToolGroup(toolGroupId); } catch { }
+      try { re?.disableElement(viewportId); } catch { }
+      try { re?.destroy?.(); } catch { }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bundleJson, side]);
 
   return (
@@ -222,7 +251,7 @@ const AnnotationModal: React.FC<AnnotationModalProps> = ({ open, data, onClose }
   if (!open) return null;
 
   // 좌/우 프리뷰 컨텍스트 저장(닫기 직전 강제 정리를 위해)
-  const leftCtx  = useRef<PreviewCtx | null>(null);
+  const leftCtx = useRef<PreviewCtx | null>(null);
   const rightCtx = useRef<PreviewCtx | null>(null);
 
   useEffect(() => {
@@ -242,7 +271,7 @@ const AnnotationModal: React.FC<AnnotationModalProps> = ({ open, data, onClose }
         removeAnnotationsByImageIdIncludes("vp=right");
       }
       purgeUnscopedAnnotations();
-    } catch {}
+    } catch { }
     onClose();
   };
 
@@ -254,7 +283,7 @@ const AnnotationModal: React.FC<AnnotationModalProps> = ({ open, data, onClose }
   }, []); // closeWithCleanup는 안정적(상수) 캡쳐
 
   const originalPretty = useMemo(() => pretty(data.originalContent), [data.originalContent]);
-  const newPretty      = useMemo(() => pretty(data.newContent),      [data.newContent]);
+  const newPretty = useMemo(() => pretty(data.newContent), [data.newContent]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Annotation 상세">
