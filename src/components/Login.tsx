@@ -22,12 +22,13 @@ export interface LoginProps {
   loginEndpoint?: string;
 }
 
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
 const Login: React.FC<LoginProps> = ({
   onSuccess,
-  loginEndpoint = "http://localhost:8080/api/login",
+  loginEndpoint = `${baseUrl}/api/login`,
 }) => {
   const navigate = useNavigate();
-
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);

@@ -1,7 +1,19 @@
 import { init as coreInit } from "@cornerstonejs/core";
 import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
 import { init as toolsInit, addTool } from "@cornerstonejs/tools";
-import { ArrowAnnotateTool } from "@cornerstonejs/tools";
+import {
+  PanTool,
+  ZoomTool,
+  StackScrollTool,
+  WindowLevelTool,
+  ArrowAnnotateTool,
+  LengthTool,
+  RectangleROITool,
+  EllipticalROITool,
+  AngleTool,
+  ProbeTool,
+  BidirectionalTool,
+} from "@cornerstonejs/tools";
 
 let ready = false;
 
@@ -11,8 +23,21 @@ export async function ensureCornerstoneReady() {
   await dicomImageLoaderInit({ maxWebWorkers: 2 });
   await toolsInit();
 
-  // 최소 렌더용 툴만 전역 등록 (필요 툴 추가 가능)
+  // 툴 전역 등록
+  // 조작 툴
+  addTool(PanTool);
+  addTool(ZoomTool);
+  addTool(StackScrollTool);
+  addTool(WindowLevelTool);
+
+  // 주석 툴
   addTool(ArrowAnnotateTool);
+  addTool(LengthTool);
+  addTool(RectangleROITool);
+  addTool(EllipticalROITool);
+  addTool(AngleTool);
+  addTool(ProbeTool);
+  addTool(BidirectionalTool);
 
   ready = true;
 }

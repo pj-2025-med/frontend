@@ -14,6 +14,12 @@ import {
     StackScrollTool,
     WindowLevelTool,
     ArrowAnnotateTool,
+    LengthTool,
+    RectangleROITool,
+    EllipticalROITool,
+    AngleTool,
+    ProbeTool,
+    BidirectionalTool,
 } from '@cornerstonejs/tools';
 import { ensureCornerstoneReady } from './bootstrap';
 
@@ -39,27 +45,41 @@ export default function useDicomEngine() {
             // 렌더링 엔진 & 뷰포트
             const re = new RenderingEngine(RENDERING_ENGINE_ID);
             engineRef.current = re;
-
+/*
             // 툴 등록
             addTool(PanTool);
             addTool(ZoomTool);
             addTool(StackScrollTool);
             addTool(WindowLevelTool);
-            addTool(ArrowAnnotateTool);
+            addTool(ArrowAnnotateTool);*/
 
             // 툴 그룹 생성/연결
             let tg = ToolGroupManager.getToolGroup(TOOLGROUP_ID);
             if (!tg) {
                 tg = ToolGroupManager.createToolGroup(TOOLGROUP_ID)!;
             }
+
+            // 조작 툴
             tg.addTool(PanTool.toolName);
             tg.addTool(ZoomTool.toolName);
             tg.addTool(StackScrollTool.toolName);
             tg.addTool(WindowLevelTool.toolName);
-            tg.addTool(ArrowAnnotateTool.toolName);
+
+            // 주석 툴
+            [
+                ArrowAnnotateTool.toolName,
+                LengthTool.toolName,
+                RectangleROITool.toolName,
+                EllipticalROITool.toolName,
+                AngleTool.toolName,
+                ProbeTool.toolName,
+                BidirectionalTool.toolName,
+            ].forEach((name) => tg.addTool(name));
+
             //tg.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID);
 
             // 바인딩 (좌: 윈도우레벨 / 우: 줌 / Ctrl+좌: 팬 / 휠 : 스택)
+            // 조작
             tg.setToolActive(WindowLevelTool.toolName, {
                 bindings: [{ mouseButton: toolsEnums.MouseBindings.Primary }],
             });
@@ -78,13 +98,21 @@ export default function useDicomEngine() {
                 bindings: [{ mouseButton: toolsEnums.MouseBindings.Wheel }],
             });
 
-            // 화살표 주석
-            tg.setToolPassive(ArrowAnnotateTool.toolName);
+            // 주석(기본 passive)
+            [
+                ArrowAnnotateTool.toolName,
+                LengthTool.toolName,
+                RectangleROITool.toolName,
+                EllipticalROITool.toolName,
+                AngleTool.toolName,
+                ProbeTool.toolName,
+                BidirectionalTool.toolName,
+            ].forEach((name) => tg.setToolPassive(name));
 
-            // 화살표 주석 텍스트 입력 콜백
+            // 화살표 주석 텍스트 입력 안함
             tg.setToolConfiguration(ArrowAnnotateTool.toolName, {
-                getTextCallback: () => prompt('주석 입력:') ?? '',
-                changeTextCallback: () => prompt('주석 수정:') ?? '',
+                getTextCallback: () => '',
+                changeTextCallback: () => '',
             })
 
             setIsReady(true);
@@ -111,5 +139,5 @@ export default function useDicomEngine() {
         //viewportId: VIEWPORT_ID,
         renderingEngineId: RENDERING_ENGINE_ID,
         isReady,
-     };
+    };
 }

@@ -6,7 +6,7 @@ import type{
   CommentRow,
 } from "./types";
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 
 //검색
@@ -23,7 +23,7 @@ export async function fetchStudies(
     endpoint = `/modality/${encodeURIComponent(query)}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${BASE_URL}/api${endpoint}`, {
     credentials: "include",
   });
   if (!response.ok) {
