@@ -13,7 +13,9 @@ type UserRow = {
   createdYear: number; // 생성년도(예: 2025)
 };
 
-const API_BASE = "http://localhost:8080/api";
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
+const API_BASE = `${baseUrl}/api`;
 
 // 하이라이트 유틸
 function highlight(text: string, keyword: string) {

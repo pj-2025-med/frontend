@@ -14,6 +14,9 @@ import {
 /**
  * 회원가입 완료 시 상위에서 처리하고 싶다면 onSuccess 콜백을 prop으로 넘겨주세요.
  */
+
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
 export interface RegisterProps {
   onSuccess?: (user: { userId: string; userName: string; email: string }) => void;
   /** 기본값: "http://localhost:8080/api/register" */
@@ -22,7 +25,7 @@ export interface RegisterProps {
 
 const Register: React.FC<RegisterProps> = ({
   onSuccess,
-  registerEndpoint = "http://localhost:8080/api/register",
+  registerEndpoint = `${baseUrl}/api/register`,
 }) => {
   const navigate = useNavigate();
 
