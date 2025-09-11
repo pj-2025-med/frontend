@@ -55,13 +55,13 @@ const TOOL_ITEMS: Array<{
   label: string;
   Icon: React.ComponentType<{ className?: string }>;
 }> = [
-    { name: 'ArrowAnnotate', label: 'Arrow', Icon: MoveUpRight },
-    { name: 'Length', label: 'Length', Icon: Ruler },
-    { name: 'RectangleROI', label: 'Rect ROI', Icon: Square },
-    { name: 'EllipticalROI', label: 'Elliptic ROI', Icon: Circle }, // ← CircleROI 환경이면 이름/라벨 변경
-    { name: 'Angle', label: 'Angle', Icon: Triangle },
-    { name: 'Probe', label: 'Probe', Icon: Crosshair },
-    { name: 'Bidirectional', label: 'Bidirectional', Icon: BetweenHorizontalStart },
+    { name: 'ArrowAnnotate', label: '화살표', Icon: MoveUpRight },
+    { name: 'Length', label: '거리', Icon: Ruler },
+    { name: 'RectangleROI', label: '사각형', Icon: Square },
+    { name: 'EllipticalROI', label: '타원', Icon: Circle }, // ← CircleROI 환경이면 이름/라벨 변경
+    { name: 'Angle', label: '각도', Icon: Triangle },
+    { name: 'Probe', label: '픽셀 정보', Icon: Crosshair },
+    { name: 'Bidirectional', label: '양방향', Icon: BetweenHorizontalStart },
     //{ name: 'FreehandROI',    label: 'Freehand',     Icon: Pencil },
   ];
 
@@ -245,7 +245,7 @@ export default function Toolbar({
       })) as AnnotationBundlePayload;
 
       if (!bundle || !Array.isArray(bundle.annotations) || bundle.annotations.length === 0) {
-        alert('불러올 주석 데이터가 없습니다.');
+        alert('주석 데이터가 없습니다.');
         return;
       }
 
@@ -257,14 +257,14 @@ export default function Toolbar({
       )
       alert('주석을 불러왔습니다.');
     } catch (e: any) {
-      console.error('Annotation 불러오기 중 오류 발생:', e);
-      alert(`불러오기 실패: ${e.message}`);
+      console.error('주석 불러오기 중 오류 발생:', e);
+      alert(`주석 불러오기 실패: ${e.message}`);
     }
   }, [viewportId, seriesKey, renderingEngineId, studyKey]);
 
   // 주석 삭제
   const onClear = useCallback(() => {
-    if (window.confirm('정말 모든 주석을 삭제하시겠습니까?')) {
+    if (window.confirm('모든 주석을 삭제하시겠습니까?')) {
       annotation.state.removeAllAnnotations();
       const re = getRenderingEngine(renderingEngineId);
       re?.render();
@@ -284,9 +284,7 @@ export default function Toolbar({
                 : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-100'}
             >
               <PencilLine className="h-4 w-4" />
-              <span className="ml-2">
-                {activeTool === 'none' ? 'Annotate' : `Annotate: ${activeTool}`}
-              </span>
+              <span className="ml-2">주석</span>
             </Button>
           </PopoverTrigger>
 
@@ -358,7 +356,7 @@ export default function Toolbar({
           className="text-neutral-300 hover:bg-red-500/10 hover:text-red-200"
         >
           <Trash2 className="h-4 w-4" />
-          <span className="ml-2">모두 삭제</span>
+          <span className="ml-2">주석 삭제</span>
         </Button>
       </div>
     </TooltipProvider>
