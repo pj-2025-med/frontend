@@ -23,7 +23,7 @@ export async function fetchStudies(
     endpoint = `/modality/${encodeURIComponent(query)}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${BASE_URL}/api${endpoint}`, {
     credentials: "include",
   });
   if (!response.ok) {
