@@ -175,9 +175,7 @@ export default function DicomViewer({ studyKey }: Props) {
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col min-h-0">
       <Card className="m-4 sm:m-6 md:m-8 bg-neutral-900/60 border-neutral-800 shadow-none flex-1 flex flex-col min-h-0">
-        <CardHeader className="border-b border-neutral-800">
-          <CardTitle>MEDICON 뷰어</CardTitle>
-        </CardHeader>
+        
 
         <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* 상단 컨트롤바 */}

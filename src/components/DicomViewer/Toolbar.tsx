@@ -23,14 +23,13 @@ import {
   Circle,            // EllipticalROI (환경에 따라 CircleROI)
   Triangle,// Angle
   Crosshair,         // Probe
-  BetweenHorizontalStart, // Bidirectional
-  Pencil,       // FreehandROI
+  X, // Bidirectional
   Check,
   Save, FolderOpen, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Props {
   toolGroupId?: string;
@@ -61,7 +60,7 @@ const TOOL_ITEMS: Array<{
     { name: 'EllipticalROI', label: '타원', Icon: Circle }, // ← CircleROI 환경이면 이름/라벨 변경
     { name: 'Angle', label: '각도', Icon: Triangle },
     { name: 'Probe', label: '픽셀 정보', Icon: Crosshair },
-    { name: 'Bidirectional', label: '양방향', Icon: BetweenHorizontalStart },
+    { name: 'Bidirectional', label: '양방향', Icon: X },
     //{ name: 'FreehandROI',    label: 'Freehand',     Icon: Pencil },
   ];
 
