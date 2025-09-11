@@ -45,7 +45,7 @@ export default function Viewer() {
                     <nav
                         role="toolbar"
                         aria-orientation="vertical"
-                        className="absolute right-4 top-4 z-20 w-20 rounded-2xl border border-neutral-800 bg-neutral-900/70 backdrop-blur p-2 shadow-lg flex flex-col items-stretch gap-2"
+                        className="w-16 shrink-0 border-l border-neutral-800 bg-neutral-900/70 backdrop-blur p-2 flex flex-col items-stretch gap-2"
                     >
                         <Button
                             className={`flex flex-col items-center gap-1 py-3 text-neutral-200 hover:bg-neutral-800/60 focus-visible:ring-neutral-700 ${openReport ? "bg-neutral-800/60" : ""
