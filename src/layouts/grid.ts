@@ -21,12 +21,16 @@ export function viewportGrid(
     cell.style.position = 'relative';
     cell.style.width = '100%';
     cell.style.height = '100%';
+    cell.style.minWidth = '0';
+    cell.style.minHeight = '0';
     gridRoot.appendChild(cell);
 
     // 캔버스 호스트 생성
     const canvasHost = document.createElement('div');
     canvasHost.style.position = 'absolute';
     canvasHost.style.inset = '0';
+    canvasHost.style.width = '100%';
+    canvasHost.style.height = '100%';
     canvasHost.style.outline = 'none';
     //canvasHost.tabIndex = -1;
     cell.appendChild(canvasHost);
@@ -74,13 +78,13 @@ export function rebuildGridAndBindTools(
         tg.removeViewports(info.viewportId, engineId);
       }
     }
-  } catch {}
+  } catch { }
 
   //기존 뷰포트 disable
   const prevViewports = [...re.getViewports()];
   for (const vp of prevViewports) {
-    try { re.disableElement(vp.id); } 
-    catch {}
+    try { re.disableElement(vp.id); }
+    catch { }
   }
 
   // 새 그리드 생성
@@ -94,8 +98,8 @@ export function rebuildGridAndBindTools(
   // 캔버스 크기 확정
   try {
     re.resize(true);
-  } catch {}
-  
+  } catch { }
+
   return vpIds;
 }
 
