@@ -86,7 +86,7 @@ export async function fetchStudies(
 
 //진료
 export async function fetchComments(studyKey: number): Promise<CommentRow[]> {
-  const response = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment`, {
+  const response = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment`, {
     credentials: "include",
   });
   if (!response.ok) {
@@ -106,7 +106,7 @@ export async function fetchComments(studyKey: number): Promise<CommentRow[]> {
 
 //진료 기록 작성
 export async function postComment(studyKey: number, title: string, content: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -122,7 +122,7 @@ export async function postComment(studyKey: number, title: string, content: stri
 }
 
 export async function updateComment(studyKey: number, commentId: number, title: string, content: string, original: CommentRow): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment/${commentId}`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment/${commentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -141,7 +141,7 @@ export async function updateComment(studyKey: number, commentId: number, title: 
 }
 
 export async function deleteComment(studyKey: number, commentId: number, comment: CommentRow): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment/${commentId}`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment/${commentId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
