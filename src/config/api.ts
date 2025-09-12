@@ -1,1 +1,3 @@
-export const API_ROOT = 'http://localhost:8080/api/v1/dicom';
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
+export const API_ROOT = `${baseUrl}/api/v1/dicom`;

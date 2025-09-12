@@ -6,7 +6,7 @@ import type{
   CommentRow,
 } from "./types";
 
-const BASE_URL = "http://localhost:8080/api";
+const BASE_URL = import.meta.env.VITE_BASE_URL;
 
 
 //검색
@@ -23,7 +23,7 @@ export async function fetchStudies(
     endpoint = `/modality/${encodeURIComponent(query)}`;
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${BASE_URL}/api${endpoint}`, {
     credentials: "include",
   });
   if (!response.ok) {
@@ -32,7 +32,7 @@ export async function fetchStudies(
 
   let newRows: ResultRow[] = [];
 
-  if (searchType === "modality") {
+  if (searchType === "modality" || searchType === "pid") {
     const apiData: ApiModalityResponse[] = await response.json();
     newRows = apiData.map((study) => {
       const year = study.studyDate.substring(0, 4);
@@ -86,7 +86,7 @@ export async function fetchStudies(
 
 //진료
 export async function fetchComments(studyKey: number): Promise<CommentRow[]> {
-  const response = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment`, {
+  const response = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment`, {
     credentials: "include",
   });
   if (!response.ok) {
@@ -106,7 +106,7 @@ export async function fetchComments(studyKey: number): Promise<CommentRow[]> {
 
 //진료 기록 작성
 export async function postComment(studyKey: number, title: string, content: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -122,7 +122,7 @@ export async function postComment(studyKey: number, title: string, content: stri
 }
 
 export async function updateComment(studyKey: number, commentId: number, title: string, content: string, original: CommentRow): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment/${commentId}`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment/${commentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -141,7 +141,7 @@ export async function updateComment(studyKey: number, commentId: number, title: 
 }
 
 export async function deleteComment(studyKey: number, commentId: number, comment: CommentRow): Promise<void> {
-  const res = await fetch(`${BASE_URL}/v1/dicom/study/${studyKey}/comment/${commentId}`, {
+  const res = await fetch(`${BASE_URL}/api/v1/dicom/study/${studyKey}/comment/${commentId}`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

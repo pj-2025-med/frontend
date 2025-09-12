@@ -1,283 +1,117 @@
-import { useEffect, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import MetaData from './MetaData';
-import useDicomEngine from '../../hooks/useDicomEngine';
-import useSeriesStack from '../../hooks/useSeriesStack';
-import { fetchStudy } from '../../services/dicomApi';
-import { getOverlayHost, rebuildGridAndBindTools } from '../../layouts/grid';
-import Toolbar from './Toolbar';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import DicomViewer from '@/components/DicomViewer/DicomViewer';
+import { useState } from "react";
+import { useParams } from "react-router";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, MessageSquare } from "lucide-react";
+import ReportPanel from '@/components/DicomViewer/ReportPanel';
 
-type Layout = {
-  rows: number,
-  cols: number
-}
+export default function Viewer() {
+    const { studyKey: studyKeyParam } = useParams<{ studyKey: string }>();
+    const studyKeyStr = studyKeyParam ?? "";
+    const studyKeyNum = Number(studyKeyStr) || 0;
 
-type Props = {
-  studyKey: string;
-}
+    const [openReport, setOpenReport] = useState(false);
 
-const RENDERING_ENGINE_ID = 'rendering-engine';
-const TOOLGROUP_ID = 'toolgroup';
+    return (
+        <div className="w-screen h-screen flex flex-col bg-neutral-950 text-neutral-100">
+            {/* 페이지 헤더 */}
+            <header className="flex items-center gap-3 px-4 sm:px-6 md:px-8 h-14 border-b border-neutral-800 bg-neutral-900/70 backdrop-blur">
+                <Button
+                    size="icon"
+                    className="text-neutral-300"
+                    onClick={() => history.back()}
+                    aria-label="뒤로가기"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <img
+                    src="/medicon-icon.png"  // 로고 이미지 경로
+                    alt="MEDICON 로고"
+                    className="h-8 w-auto"  // 로고 크기 조정
+                />
+                <h1 className="text-base sm:text-lg font-semibold tracking-tight">
+                    MEDICON
+                </h1>
+                <div className="ml-auto text-xs text-neutral-400">
+                    Study: {studyKeyNum || "-"}
+                </div>
+            </header>
 
-export default function DicomViewer({ studyKey }: Props) {
-  const { containerRef, engineRef, renderingEngineId, toolGroupId, isReady } = useDicomEngine();
-  const { setStackToViewport } = useSeriesStack(engineRef);
+            {/* 본문 */}
+            <main className="relative h-[calc(100vh-56px)] w-full overflow-hidden">
+                {/* 뷰어: 항상 화면 꽉 채우기 */}
+                <section className="absolute inset-0">
+                    <DicomViewer studyKey={studyKeyStr} />
+                </section>
 
-  // 시리즈 로딩용 입력값
-  //const [studyKey, setStudyKey] = useState('21');
-  //const [startSeriesKey, setStartSeriesKey] = useState('1');
-  const startSeriesKey = '1';
+                {/* 닫혀 있을 때 열기 런처(작은 탭) */}
+                {!openReport && (
+                    <button
+                        onClick={() => setOpenReport(true)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30
+                            rounded-l-md bg-neutral-900/80 border border-neutral-800 px-2 py-3
+                            hover:bg-neutral-800/80 focus:outline-none"
+                        aria-label="코멘트 패널 열기"
+                    >
+                        <MessageSquare className="h-5 w-5 text-neutral-200" />
+                    </button>
+                )}
 
-  const [layout, setLayout] = useState<Layout>({ rows: 1, cols: 1 })
+                {/* 툴바 + 패널을 한 컨테이너로 묶어서 같이 슬라이드 */}
+                <div
+                    className={[
+                        "absolute right-0 top-0 z-30 h-full flex items-stretch",
+                        "transition-transform duration-300 ease-in-out",
+                        openReport ? "translate-x-0" : "translate-x-full", // 패널이 열릴 때 툴바와 함께 사라짐
+                    ].join(" ")}
+                    aria-hidden={!openReport}
+                >
+                    {/* 세로 툴바 (패널과 함께 이동) */}
+                    {!openReport && (  // 툴바가 열려있을 때는 숨김
+                        <nav
+                            role="toolbar"
+                            aria-orientation="vertical"
+                            className="w-16 shrink-0 border-l border-neutral-800
+                                bg-neutral-900/80 backdrop-blur p-2
+                                flex flex-col items-stretch gap-2 absolute bottom-0 right-0 w-full rounded-l-lg rounded-t-lg"
+                        >
+                            <Button
+                                className="flex flex-col items-center gap-1 py-3 text-neutral-200
+                                hover:bg-neutral-800/60 focus-visible:ring-neutral-700"
+                                onClick={() => setOpenReport(false)}
+                                aria-label="코멘트 패널 닫기"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                                <span className="text-[11px] leading-none">닫기</span>
+                            </Button>
 
-  const [loading, setLoading] = useState(false);
+                            {/* 필요시 다른 버튼 추가 */}
+                            <Button
+                                variant="secondary"
+                                className="flex flex-col items-center gap-1 py-3"
+                                onClick={() => {/* 예: 다른 기능 */ }}
+                            >
+                                <MessageSquare className="h-5 w-5" />
+                                <span className="text-[11px] leading-none">코멘트</span>
+                            </Button>
+                        </nav>
+                    )}
 
-  // 뷰포트별 첫 imageId 저장
-  const [firstImgByVp, setFirstImgByVp] = useState<Record<string, string>>({});
-
-  const [viewportId, setViewportId] = useState<string[]>([]);
-  const [activeViewportId, setActiveViewportId] = useState<string | null>(null);
-
-  // 레이아웃 적용(언제든 호출)
-  const applyLayout = (rows: number, cols: number) => {
-    if (!engineRef.current || !containerRef.current) return;
-    setLayout({ rows, cols });
-    rebuildGridAndBindTools(
-      engineRef.current,
-      containerRef.current,
-      { rows, cols },
-      toolGroupId,
-      renderingEngineId,
+                    {/* 패널 본체 */}
+                    <aside
+                        id="report-panel"
+                        className="h-full w-[440px] border-l border-neutral-800
+                            bg-neutral-900/95 backdrop-blur overflow-hidden"
+                    >
+                        <ReportPanel
+                            open={openReport}
+                            onClose={() => setOpenReport(false)}
+                            studyKey={studyKeyNum}
+                            defaultWidth={440}
+                        />
+                    </aside>
+                </div>
+            </main>
+        </div>
     );
-
-    setFirstImgByVp({}); // 레이아웃 바뀌면 이전 오버레이 초기화
-  };
-
-  // 그리드 먼저 만들고, 다음 프레에 스택을 세팅
-  const buildGrid = useCallback(() => {
-    if (!engineRef.current || !containerRef.current) return [] as string[];
-    const vpIds = rebuildGridAndBindTools(
-      engineRef.current,
-      containerRef.current,
-      layout,
-      toolGroupId,
-      renderingEngineId
-    );
-    setViewportId(vpIds);
-    if (!activeViewportId && vpIds.length) setActiveViewportId(vpIds[0]);
-    return vpIds;
-  }, [engineRef, containerRef, layout, toolGroupId, renderingEngineId, activeViewportId]);
-
-  // 시작 시리즈 포함 현재 레이아웃 수만큼 채우기
-  const loadFromStart = useCallback(
-    async (vpIdsParam?: string[]) => {
-      if (!engineRef.current || !containerRef.current) return;
-      setLoading(true);
-
-      try {
-        const study = await fetchStudy(studyKey);
-        const list = Array.isArray(study.series) ? study.series : [];
-        if (!list.length) { console.error('시리즈 없음'); return; }
-
-        // 정렬 + 시작 인덱스
-        const sorted = [...list].sort((a, b) => (a.seriesKey ?? 0) - (b.seriesKey ?? 0));
-        const startNum = Number(String(startSeriesKey).trim());
-        let startIdx = sorted.findIndex(s => s.seriesKey === startNum);
-        if (Number.isNaN(startNum) || startIdx < 0) startIdx = 0;
-
-        /*
-        // 잔상 방지: 현재 레이아웃으로 재빌드
-        const vpIds = rebuildGridAndBindTools(
-            engineRef.current,
-            containerRef.current,
-            layout,
-            toolGroupId,
-            renderingEngineId
-        );
-
-
-        setViewportId(vpIds);
-        if (!activeViewportId && vpIds.length) setActiveViewportId(vpIds[0]);
-*/
-
-        const vpIds = vpIdsParam && vpIdsParam.length ? vpIdsParam : buildGrid();
-        if (!vpIds.length) return;
-
-        // 필요한 만큼만 로드
-        const need = Math.min(layout.rows * layout.cols, vpIds.length, sorted.length - startIdx);
-
-        // 새 로드 시작 전 매핑 초기화
-        const nextMap: Record<string, string> = {};
-
-        for (let i = 0; i < need; i++) {
-          const vpId = vpIds[i];
-          const imageIds = sorted[startIdx + i].imageIds;
-          await setStackToViewport(imageIds, vpId);
-
-          const vp = engineRef.current?.getViewport(vpId);
-          vp?.resetCamera();
-          nextMap[vpId] = imageIds[0];
-        }
-
-        setFirstImgByVp(nextMap);
-        //setStatus(`완료: ${sorted.slice(startIdx, startIdx + need).map(s => s.seriesKey).join(', ')}`);
-      } catch (e: any) {
-        console.error('시리즈 로드 중 에러', e);
-      } finally {
-        setLoading(false);
-      }
-    }, [engineRef, containerRef, studyKey, layout.rows, layout.cols, startSeriesKey, buildGrid, setStackToViewport]
-  );
-
-  // (엔진, 툴그룹 초기화 완료 이후에만) 그리드 생성 -> 다음 프레임에 loadfromStart
-  useEffect(() => {
-    if (!isReady || !engineRef.current || !containerRef.current) return;
-    const vpIds = buildGrid();
-    // 그리드 바인딩 직후 한 프레임 미루고 스택 세팅
-    /*
-    requestAnimationFrame(() => {
-        loadFromStart(vpIds);
-    });*/
-    const raf = requestAnimationFrame(() => {
-      engineRef.current?.resize(true);
-      for (const vp of engineRef.current!.getViewports?.() ?? []) {
-        vp.resetCamera();
-      }
-      loadFromStart(vpIds);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [isReady, studyKey, layout.rows, layout.cols]);
-
-  // 윈도우 리사이즈에도 리핏 (스크롤 없이 항상 맞춤)
-  useEffect(() => {
-    const onResize = () => {
-      if (!engineRef.current) return;
-      engineRef.current.resize(true);
-      for (const vp of engineRef.current.getViewports?.() ?? []) {
-        vp.resetCamera();
-      }
-    };
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [engineRef]);
-
-  /*
-  useEffect(() => {
-  if (!containerRef.current || !engineRef.current) return;
-
-  let raf = 0;
-  let lastW = 0, lastH = 0;
-
-  const rerenderContain = () => {
-    // Cornerstone 캔버스 리사이즈
-    engineRef.current?.resize(true);
-
-    // 모든 뷰포트 비율 유지(contain)로 재맞춤
-    for (const vp of engineRef.current!.getViewports?.() ?? []) {
-      vp.resetCamera();
-    }
-  };
-
-  const onResizeObserved: ResizeObserverCallback = (entries) => {
-    const cr = entries[0]?.contentRect;
-    if (!cr) return;
-
-    // 변화율 계산 (3% 이상일 때만 재맞춤)
-    const dw = lastW ? Math.abs(cr.width - lastW) / lastW : 1;
-    const dh = lastH ? Math.abs(cr.height - lastH) / lastH : 1;
-    lastW = cr.width;
-    lastH = cr.height;
-
-    if (dw < 0.03 && dh < 0.03) return;
-
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(rerenderContain);
-  };
-
-  const ro = new ResizeObserver(onResizeObserved);
-  ro.observe(containerRef.current);
-
-  return () => {
-    ro.disconnect();
-    cancelAnimationFrame(raf);
-  };
-}, [containerRef, engineRef]);
-*/
-
-  return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col min-h-0">
-      <Card className="m-4 sm:m-6 md:m-8 bg-neutral-900/60 border-neutral-800 shadow-none flex-1 flex flex-col min-h-0">
-        
-
-        <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
-          {/* 상단 컨트롤바 */}
-          <div className="flex flex-col md:flex-row items-center gap-3 justify-between">
-            {/* 레이아웃 선택 */}
-            <Select
-              value={`${layout.rows}x${layout.cols}`}
-              onValueChange={(val) => {
-                const [r, c] = val.split("x").map(Number);
-                applyLayout(r, c);
-              }}
-            >
-              <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
-                <SelectValue placeholder="레이아웃" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
-                <SelectItem value="1x1">1x1</SelectItem>
-                <SelectItem value="2x2">2x2</SelectItem>
-                <SelectItem value="3x3">3x3</SelectItem>
-              </SelectContent>
-            </Select>
-
-            
-
-            <Toolbar
-              toolGroupId={toolGroupId}
-              renderingEngineId={renderingEngineId}
-              viewportId={activeViewportId ?? viewportId[0]}
-              studyKey={studyKey}
-              seriesKey={startSeriesKey}
-            />
-          </div>
-
-          {/* 뷰포트 그리드 */}
-          <div
-            ref={containerRef}
-            onContextMenu={(e) => e.preventDefault()}
-            className="
-              w-full flex-1 min-h-0 grid overflow-hidden
-              rounded-xl border border-neutral-800
-              bg-neutral-800           /* ← 갭(구분선) 색 */
-              gap-[2px]                
-            "
-            style={{
-              gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-              gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-              
-            }}
-          />
-
-        </CardContent>
-      </Card>
-
-      {/* 각 뷰포트 메타데이터 오버레이 */}
-      {containerRef.current &&
-        Object.entries(firstImgByVp).map(([vpId, imgId]) => {
-          const host = getOverlayHost(containerRef.current!, vpId);
-          return host
-            ? createPortal(<MetaData firstImageId={imgId} />, host, `meta-${vpId}`)
-            : null;
-        })}
-    </div>
-  );
-
 }

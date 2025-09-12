@@ -17,6 +17,8 @@ import {
 import AnnotationModal, { type AnnotationModalData } from "../AnnotationModal";
 import { normalizeToYMDHMS } from "../../DateFormat";
 
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
 type ActionType = "C" | "I" | "U" | "D" | "R" | string;
 
 type LogRaw = {
@@ -139,7 +141,7 @@ const LogsView: React.FC = () => {
     async (append: boolean, targetPage: number) => {
       setLoading(true); setErr(null);
       try {
-        const url = `http://localhost:8080/api/v1/logs/showAll?page=${targetPage}&size=${PAGE_SIZE}`;
+        const url = `${baseUrl}/api/v1/logs/showAll?page=${targetPage}&size=${PAGE_SIZE}`;
         const res = await fetch(url, {
           headers: { Accept: "application/json" },
           credentials: "include",

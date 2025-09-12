@@ -22,6 +22,8 @@ import {
   removeAnnotationsByImageIdIncludes,
 } from "@/services/annotation";
 
+const baseUrl = import.meta.env.VITE_BASE_URL;
+
 /* ======================= Types ======================= */
 export type AnnotationModalData = {
   logId: number;
@@ -57,7 +59,7 @@ function extractBundleFromContainer(raw?: string | null) {
   return { container, bundle };
 }
 
-function resolveImageId(container: any, bundle: any, base = "http://localhost:8080/api/v1/dicom") {
+function resolveImageId(container: any, bundle: any, base = `${baseUrl}/api/v1/dicom`) {
   const obj = Array.isArray(bundle?.objects) ? bundle.objects[0] : null;
   const fromBundle =
     obj?.referencedImageId ||
