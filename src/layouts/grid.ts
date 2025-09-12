@@ -32,7 +32,6 @@ export function viewportGrid(
     canvasHost.style.width = '100%';
     canvasHost.style.height = '100%';
     canvasHost.style.outline = 'none';
-    //canvasHost.tabIndex = -1;
     cell.appendChild(canvasHost);
 
     // 오버레이 호스트 생성(메타데이터 표시)
@@ -40,7 +39,6 @@ export function viewportGrid(
     overlay.style.position = 'absolute';
     overlay.style.inset = '0';
     overlay.style.pointerEvents = 'none';
-    //overlay.style.zIndex = '1';
     overlay.dataset.overlayFor = `vp-${i}`;
     cell.appendChild(overlay);
 
@@ -55,6 +53,7 @@ export function viewportGrid(
   }
   return ids;
 }
+
 
 // 그리드, 툴즈 재생성
 export function rebuildGridAndBindTools(

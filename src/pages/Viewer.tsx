@@ -14,7 +14,7 @@ export default function Viewer() {
     const [openReport, setOpenReport] = useState(false);
 
     return (
-        <div className="w-screen h-screen flex flex-col bg-neutral-950 text-neutral-100">
+<div className="w-screen h-screen flex flex-col bg-neutral-950 text-neutral-100">
             {/* 페이지 헤더 */}
             <header className="flex items-center gap-3 px-4 sm:px-6 md:px-8 h-14 border-b border-neutral-800 bg-neutral-900/70 backdrop-blur">
                 <Button
@@ -34,51 +34,78 @@ export default function Viewer() {
             </header>
 
             {/* 본문 */}
-            <main className="flex h-[calc(100vh-56px)] w-full">
-                {/* 뷰어 영역 */}
-                
-                    <section className="relative flex-1 min-w-0 overflow-hidden">
-          <DicomViewer studyKey={studyKeyStr} />
-        </section>
+<main className="relative h-[calc(100vh-56px)] w-full overflow-hidden">
+  {/* 뷰어: 항상 화면 꽉 채우기 */}
+  <section className="absolute inset-0">
+    <DicomViewer studyKey={studyKeyStr} />
+  </section>
 
-                    {/* ▶ 세로 버튼 바 (헤더 아래 · 뷰어 오른쪽) */}
-                    <nav
-                        role="toolbar"
-                        aria-orientation="vertical"
-                        className="w-16 shrink-0 border-l border-neutral-800 bg-neutral-900/70 backdrop-blur p-2 flex flex-col items-stretch gap-2"
-                    >
-                        <Button
-                            className={`flex flex-col items-center gap-1 py-3 text-neutral-200 hover:bg-neutral-800/60 focus-visible:ring-neutral-700 ${openReport ? "bg-neutral-800/60" : ""
-                                }`}
-                            onClick={() => setOpenReport(v => !v)}
-                            aria-expanded={openReport}
-                            aria-controls="comment-panel"
-                            aria-label="코멘트 패널 토글"
-                        >
-                            <MessageSquare className="h-5 w-5" />
-                            <span className="text-[11px] leading-none">코멘트</span>
-                        </Button>
+  {/* 닫혀 있을 때 열기 런처(작은 탭) — 필요 없으면 제거 */}
+  {!openReport && (
+    <button
+      onClick={() => setOpenReport(true)}
+      className="absolute right-2 top-1/2 -translate-y-1/2 z-30
+                 rounded-l-md bg-neutral-900/80 border border-neutral-800 px-2 py-3
+                 hover:bg-neutral-800/80 focus:outline-none"
+      aria-label="코멘트 패널 열기"
+    >
+      <MessageSquare className="h-5 w-5 text-neutral-200" />
+    </button>
+  )}
 
-                        {/* 필요하면 여기에 다른 버튼도 추가해서 세로로 쌓으면 됨 */}
-                    </nav>
+  {/* ▶ 툴바 + 패널을 한 컨테이너로 묶어서 같이 슬라이드 */}
+  <div
+    className={[
+      "absolute right-0 top-0 z-30 h-full flex items-stretch",
+      "transition-transform duration-300 ease-in-out",
+      openReport ? "translate-x-0" : "translate-x-full", // ← 함께 들어오고 나감
+    ].join(" ")}
+    aria-hidden={!openReport}
+  >
+    {/* 세로 툴바 (패널과 함께 이동) */}
+    <nav
+      role="toolbar"
+      aria-orientation="vertical"
+      className="w-16 shrink-0 border-l border-neutral-800
+                 bg-neutral-900/80 backdrop-blur p-2
+                 flex flex-col items-stretch gap-2"
+    >
+      <Button
+        className="flex flex-col items-center gap-1 py-3 text-neutral-200
+                   hover:bg-neutral-800/60 focus-visible:ring-neutral-700"
+        onClick={() => setOpenReport(false)}
+        aria-label="코멘트 패널 닫기"
+      >
+        <ChevronLeft className="h-5 w-5" />
+        <span className="text-[11px] leading-none">닫기</span>
+      </Button>
 
-                {/* 사이드 코멘트 패널: 닫힐 때는 width=0 으로 공간 비차지 */}
-                <aside
-                    id="report-panel"
-                    className={`h-full border-l border-neutral-800 bg-neutral-900 transition-[width] duration-300 ease-in-out overflow-hidden ${openReport ? "w-[440px]" : "w-0"
-                        }`}
-                    aria-hidden={!openReport}
-                >
-                    {openReport && (
-                        <ReportPanel
-                            open={openReport}
-                            onClose={() => setOpenReport(false)}
-                            studyKey={studyKeyNum}
-                            defaultWidth={440}
-                        />
-                    )}
-                </aside>
-            </main>
+      {/* 필요시 다른 버튼 추가 */}
+      <Button
+        variant="secondary"
+        className="flex flex-col items-center gap-1 py-3"
+        onClick={() => {/* 예: 다른 기능 */}}
+      >
+        <MessageSquare className="h-5 w-5" />
+        <span className="text-[11px] leading-none">코멘트</span>
+      </Button>
+    </nav>
+
+    {/* 패널 본체 */}
+    <aside
+      id="report-panel"
+      className="h-full w-[440px] border-l border-neutral-800
+                 bg-neutral-900/95 backdrop-blur overflow-hidden"
+    >
+      <ReportPanel
+        open={openReport}
+        onClose={() => setOpenReport(false)}
+        studyKey={studyKeyNum}
+        defaultWidth={440}
+      />
+    </aside>
+  </div>
+</main>
         </div>
     );
 }

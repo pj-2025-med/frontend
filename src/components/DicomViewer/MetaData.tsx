@@ -4,6 +4,7 @@ import { metaData } from '@cornerstonejs/core';
 interface Props {
     firstImageId?: string;
 }
+
 export default function MetaData({ firstImageId }: Props) {
     const [info, setInfo] = useState<any>(null);
 

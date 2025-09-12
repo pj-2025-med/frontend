@@ -124,7 +124,7 @@ export default function DicomViewer({ studyKey }: Props) {
 
           const vp = engineRef.current?.getViewport(vpId);
           vp?.resetCamera();
-          //nextMap[vpId] = imageIds[0];
+          nextMap[vpId] = imageIds[0];
         }
 
         setFirstImgByVp(nextMap);
@@ -169,8 +169,48 @@ export default function DicomViewer({ studyKey }: Props) {
     return () => window.removeEventListener('resize', onResize);
   }, [engineRef]);
 
+  /*
+  useEffect(() => {
+  if (!containerRef.current || !engineRef.current) return;
 
+  let raf = 0;
+  let lastW = 0, lastH = 0;
 
+  const rerenderContain = () => {
+    // Cornerstone 캔버스 리사이즈
+    engineRef.current?.resize(true);
+
+    // 모든 뷰포트 비율 유지(contain)로 재맞춤
+    for (const vp of engineRef.current!.getViewports?.() ?? []) {
+      vp.resetCamera();
+    }
+  };
+
+  const onResizeObserved: ResizeObserverCallback = (entries) => {
+    const cr = entries[0]?.contentRect;
+    if (!cr) return;
+
+    // 변화율 계산 (3% 이상일 때만 재맞춤)
+    const dw = lastW ? Math.abs(cr.width - lastW) / lastW : 1;
+    const dh = lastH ? Math.abs(cr.height - lastH) / lastH : 1;
+    lastW = cr.width;
+    lastH = cr.height;
+
+    if (dw < 0.03 && dh < 0.03) return;
+
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(rerenderContain);
+  };
+
+  const ro = new ResizeObserver(onResizeObserved);
+  ro.observe(containerRef.current);
+
+  return () => {
+    ro.disconnect();
+    cancelAnimationFrame(raf);
+  };
+}, [containerRef, engineRef]);
+*/
 
   return (
     <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col min-h-0">
@@ -224,6 +264,7 @@ export default function DicomViewer({ studyKey }: Props) {
             style={{
               gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
               gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+              
             }}
           />
 
