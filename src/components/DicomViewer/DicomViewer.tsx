@@ -274,7 +274,7 @@ export default function DicomViewer({ studyKey }: Props) {
                         bg-neutral-800 gap-[2px]"
             style={{
               gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-              gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
+              gridTemplateColumns: `repeat(${layout.cols}, 1fr)`, 
             }}
           />
         </CardContent>
