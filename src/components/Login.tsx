@@ -107,11 +107,9 @@ const Login: React.FC<LoginProps> = ({
         <Card className="bg-neutral-900/60 border-neutral-800 shadow-none w-full max-w-md">
           <CardHeader className="border-b border-neutral-800">
             <div className="flex flex-col items-center gap-2">
-              {/* 로고/타이틀 영역 - 필요하면 로고 이미지로 교체 */}
-              <div className="h-10 w-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold">
-                P+
-              </div>
-              <CardTitle className="tracking-tight">PACS+ 로그인</CardTitle>
+              {/* 로고/타이틀 영역 */}
+              <img src="/medicon-full.png" className="h-10 w-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold" />
+              <CardTitle className="tracking-tight">MEDICON 로그인</CardTitle>
               <p className="text-sm text-neutral-400">
                 계정으로 로그인하여 서비스를 이용하세요
               </p>

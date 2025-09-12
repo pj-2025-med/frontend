@@ -1,215 +1,117 @@
-import { useEffect, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import MetaData from './MetaData';
-import useDicomEngine from '../../hooks/useDicomEngine';
-import useSeriesStack from '../../hooks/useSeriesStack';
-import { fetchStudy } from '../../services/dicomApi';
-import { getOverlayHost, rebuildGridAndBindTools } from '../../layouts/grid';
-import Toolbar from './Toolbar';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import DicomViewer from '@/components/DicomViewer/DicomViewer';
+import { useState } from "react";
+import { useParams } from "react-router";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, MessageSquare } from "lucide-react";
+import ReportPanel from '@/components/DicomViewer/ReportPanel';
 
-type Layout = {
-    rows: number,
-    cols: number
-}
+export default function Viewer() {
+    const { studyKey: studyKeyParam } = useParams<{ studyKey: string }>();
+    const studyKeyStr = studyKeyParam ?? "";
+    const studyKeyNum = Number(studyKeyStr) || 0;
 
-type Props = {
-    studyKey: string;
-}
-
-const RENDERING_ENGINE_ID = 'rendering-engine';
-const TOOLGROUP_ID = 'toolgroup';
-
-export default function DicomViewer({ studyKey }: Props) {
-    const { containerRef, engineRef, renderingEngineId, toolGroupId, isReady } = useDicomEngine();
-    const { setStackToViewport } = useSeriesStack(engineRef);
-
-    const [layout, setLayout] = useState<Layout>({ rows: 1, cols: 1 });
-    const [loading, setLoading] = useState(false);
-    const [firstImgByVp, setFirstImgByVp] = useState<Record<string, string>>({});
-    const [viewportId, setViewportId] = useState<string[]>([]);
-    const [activeViewportId, setActiveViewportId] = useState<string | null>(null);
-    const [selectedSeriesKey, setSelectedSeriesKey] = useState<number>(1);  // 기본 선택된 시리즈 키
-
-    const [study, setStudy] = useState<any>(null);
-
-    // 레이아웃 적용
-    const applyLayout = (rows: number, cols: number) => {
-        if (!engineRef.current || !containerRef.current) return;
-        setLayout({ rows, cols });
-        rebuildGridAndBindTools(
-            engineRef.current,
-            containerRef.current,
-            { rows, cols },
-            toolGroupId,
-            renderingEngineId,
-        );
-        setFirstImgByVp({});
-    };
-
-    const buildGrid = useCallback(() => {
-        if (!engineRef.current || !containerRef.current) return [] as string[];
-        const vpIds = rebuildGridAndBindTools(
-            engineRef.current,
-            containerRef.current,
-            layout,
-            toolGroupId,
-            renderingEngineId
-        );
-        setViewportId(vpIds);
-        if (!activeViewportId && vpIds.length) setActiveViewportId(vpIds[0]);
-        return vpIds;
-    }, [engineRef, containerRef, layout, toolGroupId, renderingEngineId, activeViewportId]);
-
-    const loadFromStart = useCallback(
-        async (vpIdsParam?: string[]) => {
-            if (!engineRef.current || !containerRef.current) return;
-            setLoading(true);
-
-            try {
-                if (!study) return;  // Study 정보가 없으면 리턴
-                const list = Array.isArray(study.series) ? study.series : [];
-                if (!list.length) { console.error('시리즈 없음'); return; }
-
-                const sorted = [...list].sort((a, b) => (a.seriesKey ?? 0) - (b.seriesKey ?? 0));
-                const startIdx = sorted.findIndex(s => s.seriesKey === selectedSeriesKey);
-                if (startIdx < 0) return;
-
-                const vpIds = vpIdsParam && vpIdsParam.length ? vpIdsParam : buildGrid();
-                if (!vpIds.length) return;
-
-                const need = Math.min(layout.rows * layout.cols, vpIds.length, sorted.length - startIdx);
-
-                const nextMap: Record<string, string> = {};
-
-                for (let i = 0; i < need; i++) {
-                    const vpId = vpIds[i];
-                    const imageIds = sorted[startIdx + i].imageIds;
-                    await setStackToViewport(imageIds, vpIds[i]);
-                    nextMap[vpId] = imageIds[0];
-                }
-
-                setFirstImgByVp(nextMap);
-            } catch (e: any) {
-                console.error('시리즈 로드 중 에러', e);
-            } finally {
-                setLoading(false);
-            }
-        }, [engineRef, containerRef, studyKey, layout.rows, layout.cols, selectedSeriesKey, buildGrid, setStackToViewport, study]
-    );
-
-    useEffect(() => {
-        const loadStudyData = async () => {
-            try {
-                const fetchedStudy = await fetchStudy(studyKey);
-                setStudy(fetchedStudy);
-            } catch (e) {
-                console.error('Study 정보 로드 중 오류 발생', e);
-            }
-        };
-        loadStudyData();
-    }, [studyKey]);
-
-    useEffect(() => {
-        if (!isReady || !engineRef.current || !containerRef.current) return;
-        if (!study) return;
-
-        const vpIds = buildGrid();
-        const raf = requestAnimationFrame(() => loadFromStart(vpIds));
-        return () => cancelAnimationFrame(raf);
-    }, [isReady, studyKey, layout.rows, layout.cols, study]);
-
-    // 시리즈 선택 시 로드
-    useEffect(() => {
-        if (study) {
-            loadFromStart();
-        }
-    }, [selectedSeriesKey, study]);
+    const [openReport, setOpenReport] = useState(false);
 
     return (
-        <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col">
-            <Card className="m-4 sm:m-6 md:m-8 bg-neutral-900/60 border-neutral-800 shadow-none flex-1 flex flex-col">
-                <CardHeader className="border-b border-neutral-800">
-                    <CardTitle>MEDICONNECT 뷰어</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden">
-                    <div className="flex flex-col md:flex-row items-center gap-3">
-                        {/* 레이아웃 선택 */}
-                        <Select
-                            value={`${layout.rows}x${layout.cols}`}
-                            onValueChange={(val) => {
-                                const [r, c] = val.split("x").map(Number);
-                                applyLayout(r, c);
-                            }}
+        <div className="w-screen h-screen flex flex-col bg-neutral-950 text-neutral-100">
+            {/* 페이지 헤더 */}
+            <header className="flex items-center gap-3 px-4 sm:px-6 md:px-8 h-14 border-b border-neutral-800 bg-neutral-900/70 backdrop-blur">
+                <Button
+                    size="icon"
+                    className="text-neutral-300"
+                    onClick={() => history.back()}
+                    aria-label="뒤로가기"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </Button>
+                <img
+                    src="/medicon-icon.png"  // 로고 이미지 경로
+                    alt="MEDICON 로고"
+                    className="h-8 w-auto"  // 로고 크기 조정
+                />
+                <h1 className="text-base sm:text-lg font-semibold tracking-tight">
+                    MEDICON
+                </h1>
+                <div className="ml-auto text-xs text-neutral-400">
+                    Study: {studyKeyNum || "-"}
+                </div>
+            </header>
+
+            {/* 본문 */}
+            <main className="relative h-[calc(100vh-56px)] w-full overflow-hidden">
+                {/* 뷰어: 항상 화면 꽉 채우기 */}
+                <section className="absolute inset-0">
+                    <DicomViewer studyKey={studyKeyStr} />
+                </section>
+
+                {/* 닫혀 있을 때 열기 런처(작은 탭) */}
+                {!openReport && (
+                    <button
+                        onClick={() => setOpenReport(true)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 z-30
+                            rounded-l-md bg-neutral-900/80 border border-neutral-800 px-2 py-3
+                            hover:bg-neutral-800/80 focus:outline-none"
+                        aria-label="코멘트 패널 열기"
+                    >
+                        <MessageSquare className="h-5 w-5 text-neutral-200" />
+                    </button>
+                )}
+
+                {/* 툴바 + 패널을 한 컨테이너로 묶어서 같이 슬라이드 */}
+                <div
+                    className={[
+                        "absolute right-0 top-0 z-30 h-full flex items-stretch",
+                        "transition-transform duration-300 ease-in-out",
+                        openReport ? "translate-x-0" : "translate-x-full", // 패널이 열릴 때 툴바와 함께 사라짐
+                    ].join(" ")}
+                    aria-hidden={!openReport}
+                >
+                    {/* 세로 툴바 (패널과 함께 이동) */}
+                    {!openReport && (  // 툴바가 열려있을 때는 숨김
+                        <nav
+                            role="toolbar"
+                            aria-orientation="vertical"
+                            className="w-16 shrink-0 border-l border-neutral-800
+                                bg-neutral-900/80 backdrop-blur p-2
+                                flex flex-col items-stretch gap-2 absolute bottom-0 right-0 w-full rounded-l-lg rounded-t-lg"
                         >
-                            <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
-                                <SelectValue placeholder="레이아웃" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
-                                <SelectItem value="1x1">1x1</SelectItem>
-                                <SelectItem value="2x2">2x2</SelectItem>
-                                <SelectItem value="3x3">3x3</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            <Button
+                                className="flex flex-col items-center gap-1 py-3 text-neutral-200
+                                hover:bg-neutral-800/60 focus-visible:ring-neutral-700"
+                                onClick={() => setOpenReport(false)}
+                                aria-label="코멘트 패널 닫기"
+                            >
+                                <ChevronLeft className="h-5 w-5" />
+                                <span className="text-[11px] leading-none">닫기</span>
+                            </Button>
 
-                        {/* 시리즈 선택 */}
-                        <Select
-                            value={selectedSeriesKey.toString()}
-                            onValueChange={(val) => setSelectedSeriesKey(Number(val))}
-                        >
-                            <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
-                                <SelectValue placeholder="시리즈 선택" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
-                                {study?.series?.map((series: any) => (
-                                    <SelectItem key={series.seriesKey} value={series.seriesKey.toString()}>
-                                        {`Series ${series.seriesKey}`}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {/* 필요시 다른 버튼 추가 */}
+                            <Button
+                                variant="secondary"
+                                className="flex flex-col items-center gap-1 py-3"
+                                onClick={() => {/* 예: 다른 기능 */ }}
+                            >
+                                <MessageSquare className="h-5 w-5" />
+                                <span className="text-[11px] leading-none">코멘트</span>
+                            </Button>
+                        </nav>
+                    )}
 
-                        <span className="text-sm text-neutral-400 flex-1">
-                            좌: 윈도우레벨 / Ctrl+좌: 팬 / 우: 줌 / 휠: 스택 스크롤
-                        </span>
-
-                        <Toolbar
-                            toolGroupId={toolGroupId}
-                            renderingEngineId={renderingEngineId}
-                            viewportId={activeViewportId ?? viewportId[0]}
-                            studyKey={studyKey}
-                            seriesKey={selectedSeriesKey.toString()}  // 숫자 값을 문자열로 변환
+                    {/* 패널 본체 */}
+                    <aside
+                        id="report-panel"
+                        className="h-full w-[440px] border-l border-neutral-800
+                            bg-neutral-900/95 backdrop-blur overflow-hidden"
+                    >
+                        <ReportPanel
+                            open={openReport}
+                            onClose={() => setOpenReport(false)}
+                            studyKey={studyKeyNum}
+                            defaultWidth={440}
                         />
-                    </div>
-
-                    <div
-                        ref={containerRef}
-                        onContextMenu={(e) => e.preventDefault()}
-                        className="w-full h-full min-h-[1080px] grid overflow-hidden
-                        rounded-xl border border-neutral-800
-                        bg-neutral-800 gap-[2px]"
-                        style={{
-                            gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
-                            gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-                        }}
-                    />
-                </CardContent>
-            </Card>
-
-            {containerRef.current &&
-                Object.entries(firstImgByVp).map(([vpId, imgId]) => {
-                    const host = getOverlayHost(containerRef.current!, vpId);
-                    return host
-                        ? createPortal(<MetaData firstImageId={imgId} />, host, `meta-${vpId}`)
-                        : null;
-                })}
+                    </aside>
+                </div>
+            </main>
         </div>
     );
 }
