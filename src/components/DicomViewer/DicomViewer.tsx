@@ -219,7 +219,7 @@ export default function DicomViewer({ studyKey }: Props) {
 
         <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
           {/* 상단 컨트롤바 */}
-          <div className="flex flex-col md:flex-row items-center gap-3">
+          <div className="flex flex-col md:flex-row items-center gap-3 justify-between">
             {/* 레이아웃 선택 */}
             <Select
               value={`${layout.rows}x${layout.cols}`}
@@ -238,9 +238,7 @@ export default function DicomViewer({ studyKey }: Props) {
               </SelectContent>
             </Select>
 
-            <span className="text-sm text-neutral-400 flex-1">
-              좌: 윈도우레벨 / Ctrl+좌: 팬 / 우: 줌 / 휠: 스택 스크롤
-            </span>
+            
 
             <Toolbar
               toolGroupId={toolGroupId}
