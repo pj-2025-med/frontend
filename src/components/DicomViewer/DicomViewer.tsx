@@ -94,7 +94,7 @@ export default function DicomViewer({ studyKey }: Props) {
                     const imageIds = sorted[startIdx + i].imageIds;
                     await setStackToViewport(imageIds, vpIds[i]);
                     nextMap[vpId] = imageIds[0];
-                }
+                } 
 
                 setFirstImgByVp(nextMap);
             } catch (e: any) {
