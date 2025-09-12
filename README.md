@@ -419,6 +419,21 @@ java -jar build/libs/MED-project-0.0.1-SNAPSHOT.jar
 >
 > 백엔드 서버는 기본적으로 `http://localhost:8080` 에서 실행됩니다.
 
+## 환경 변수 설정 (`.env`)
+
+프론트엔드 프로젝트의 루트 경로에 `.env` 파일을 생성하고, 아래 예시를 참고하여 환경 변수를 설정하세요.
+
+<details>
+<summary><strong>프론트엔드 환경 변수 예시 보기</strong></summary>
+
+```env
+# API 서버 주소
+VITE_API_URL=[서버 주소:포트]
+
+# 기타 필요한 환경 변수
+# VITE_SOME_KEY=값
+```
+</details>
 
 <br>
 
