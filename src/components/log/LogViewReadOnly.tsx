@@ -5,6 +5,7 @@ import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,8 @@ import {
 
 import AnnotationModal, { type AnnotationModalData } from "../AnnotationModal";
 import { normalizeToYMDHMS } from "../../DateFormat";
+
+const baseUrl = import.meta.env.VITE_BASE_URL;
 
 type ActionType = "C" | "I" | "U" | "D" | "R" | string;
 
@@ -54,6 +57,7 @@ const PAGE_SIZE = 20;
 
 const LogsViewReadOnly: React.FC = () => {
   // 조회 로그 전용: 액션 타입 'R' 고정
+  const navigate = useNavigate();
   const [actionType] = useState<string>("R");
   const [selCommentType, setSelCommentType] = useState<string>("ALL");
   const [selUserId, setSelUserId] = useState<string>("ALL");
@@ -117,7 +121,7 @@ const LogsViewReadOnly: React.FC = () => {
     async (append: boolean, targetPage: number) => {
       setLoading(true); setErr(null);
       try {
-        const url = `http://localhost:8080/api/v1/logs/showViewLog?page=${targetPage}&size=${PAGE_SIZE}`;
+        const url = `${baseUrl}/api/v1/logs/showViewLog?page=${targetPage}&size=${PAGE_SIZE}`;
         const res = await fetch(url, {
           headers: { Accept: "application/json" },
           credentials: "include",
@@ -282,8 +286,8 @@ const LogsViewReadOnly: React.FC = () => {
               </Select>
 
               <div className="flex gap-2">
-                <Button onClick={onRefresh} className="flex-1 bg-sky-500 hover:bg-sky-600" disabled={loading}>
-                  {loading ? "새로고침..." : "새로고침"}
+                <Button onClick={() => navigate("/logView")} className="flex-1 bg-sky-500 hover:bg-sky-600" disabled={loading}>
+                  {loading ? "새로고침..." : "로그조회"}
                 </Button>
                 <Button onClick={resetFilters} variant="outline" className="flex-1 border-neutral-700 text-neutral-200">
                   초기화
