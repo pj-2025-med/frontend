@@ -45,6 +45,9 @@ export default function DicomViewer({ studyKey }: Props) {
 
   const [viewportId, setViewportId] = useState<string[]>([]);
   const [activeViewportId, setActiveViewportId] = useState<string | null>(null);
+  const [selectedSeriesKey, setSelectedSeriesKey] = useState<number>(1);  // 기본 선택된 시리즈 키
+
+  const [study, setStudy] = useState<any>(null);
 
   // 레이아웃 적용(언제든 호출)
   const applyLayout = (rows: number, cols: number) => {
@@ -77,64 +80,75 @@ export default function DicomViewer({ studyKey }: Props) {
   }, [engineRef, containerRef, layout, toolGroupId, renderingEngineId, activeViewportId]);
 
   // 시작 시리즈 포함 현재 레이아웃 수만큼 채우기
+  // const loadFromStart = useCallback(
+  //   async (vpIdsParam?: string[]) => {
+  //     if (!engineRef.current || !containerRef.current) return;
+  //     setLoading(true);
+
+  //     try {
+  //       const study = await fetchStudy(studyKey);
+  //       const list = Array.isArray(study.series) ? study.series : [];
+  //       if (!list.length) { console.error('시리즈 없음'); return; }
+
+  //       // 정렬 + 시작 인덱스
+  //       const sorted = [...list].sort((a, b) => (a.seriesKey ?? 0) - (b.seriesKey ?? 0));
+  //       const startNum = Number(String(startSeriesKey).trim());
+  //       let startIdx = sorted.findIndex(s => s.seriesKey === startNum);
+  //       if (Number.isNaN(startNum) || startIdx < 0) startIdx = 0;
+
+
+  //       // 잔상 방지: 현재 레이아웃으로 재빌드
+
+  //       const vpIds = rebuildGridAndBindTools(
+  //           engineRef.current,
+  //           containerRef.current,
+  //           layout,
+  //           toolGroupId,
+  //           renderingEngineId
+  //       );
+
+
+  //       setViewportId(vpIds);
+  //       if (!activeViewportId && vpIds.length) setActiveViewportId(vpIds[0]);
+
+  //       return vpIds;
+  //   }, [engineRef, containerRef, layout, toolGroupId, renderingEngineId, activeViewportId]);
+
   const loadFromStart = useCallback(
     async (vpIdsParam?: string[]) => {
       if (!engineRef.current || !containerRef.current) return;
       setLoading(true);
 
       try {
-        const study = await fetchStudy(studyKey);
+        if (!study) return;  // Study 정보가 없으면 리턴
         const list = Array.isArray(study.series) ? study.series : [];
         if (!list.length) { console.error('시리즈 없음'); return; }
 
-        // 정렬 + 시작 인덱스
         const sorted = [...list].sort((a, b) => (a.seriesKey ?? 0) - (b.seriesKey ?? 0));
-        const startNum = Number(String(startSeriesKey).trim());
-        let startIdx = sorted.findIndex(s => s.seriesKey === startNum);
-        if (Number.isNaN(startNum) || startIdx < 0) startIdx = 0;
-
-        /*
-        // 잔상 방지: 현재 레이아웃으로 재빌드
-        const vpIds = rebuildGridAndBindTools(
-            engineRef.current,
-            containerRef.current,
-            layout,
-            toolGroupId,
-            renderingEngineId
-        );
-
-
-        setViewportId(vpIds);
-        if (!activeViewportId && vpIds.length) setActiveViewportId(vpIds[0]);
-*/
+        const startIdx = sorted.findIndex(s => s.seriesKey === selectedSeriesKey);
+        if (startIdx < 0) return;
 
         const vpIds = vpIdsParam && vpIdsParam.length ? vpIdsParam : buildGrid();
         if (!vpIds.length) return;
 
-        // 필요한 만큼만 로드
         const need = Math.min(layout.rows * layout.cols, vpIds.length, sorted.length - startIdx);
 
-        // 새 로드 시작 전 매핑 초기화
         const nextMap: Record<string, string> = {};
 
         for (let i = 0; i < need; i++) {
           const vpId = vpIds[i];
           const imageIds = sorted[startIdx + i].imageIds;
-          await setStackToViewport(imageIds, vpId);
-
-          const vp = engineRef.current?.getViewport(vpId);
-          vp?.resetCamera();
+          await setStackToViewport(imageIds, vpIds[i]);
           nextMap[vpId] = imageIds[0];
         }
 
         setFirstImgByVp(nextMap);
-        //setStatus(`완료: ${sorted.slice(startIdx, startIdx + need).map(s => s.seriesKey).join(', ')}`);
       } catch (e: any) {
         console.error('시리즈 로드 중 에러', e);
       } finally {
         setLoading(false);
       }
-    }, [engineRef, containerRef, studyKey, layout.rows, layout.cols, startSeriesKey, buildGrid, setStackToViewport]
+    }, [engineRef, containerRef, studyKey, layout.rows, layout.cols, selectedSeriesKey, buildGrid, setStackToViewport, study]
   );
 
   // (엔진, 툴그룹 초기화 완료 이후에만) 그리드 생성 -> 다음 프레임에 loadfromStart
@@ -169,107 +183,103 @@ export default function DicomViewer({ studyKey }: Props) {
     return () => window.removeEventListener('resize', onResize);
   }, [engineRef]);
 
-  /*
   useEffect(() => {
-  if (!containerRef.current || !engineRef.current) return;
+    const loadStudyData = async () => {
+      try {
+        const fetchedStudy = await fetchStudy(studyKey);
+        setStudy(fetchedStudy);
+      } catch (e) {
+        console.error('Study 정보 로드 중 오류 발생', e);
+      }
+    };
+    loadStudyData();
+  }, [studyKey]);
 
-  let raf = 0;
-  let lastW = 0, lastH = 0;
+  useEffect(() => {
+    if (!isReady || !engineRef.current || !containerRef.current) return;
+    if (!study) return;
 
-  const rerenderContain = () => {
-    // Cornerstone 캔버스 리사이즈
-    engineRef.current?.resize(true);
+    const vpIds = buildGrid();
+    const raf = requestAnimationFrame(() => loadFromStart(vpIds));
+    return () => cancelAnimationFrame(raf);
+  }, [isReady, studyKey, layout.rows, layout.cols, study]);
 
-    // 모든 뷰포트 비율 유지(contain)로 재맞춤
-    for (const vp of engineRef.current!.getViewports?.() ?? []) {
-      vp.resetCamera();
+  // 시리즈 선택 시 로드
+  useEffect(() => {
+    if (study) {
+      loadFromStart();
     }
-  };
+  }, [selectedSeriesKey, study]);
 
-  const onResizeObserved: ResizeObserverCallback = (entries) => {
-    const cr = entries[0]?.contentRect;
-    if (!cr) return;
 
-    // 변화율 계산 (3% 이상일 때만 재맞춤)
-    const dw = lastW ? Math.abs(cr.width - lastW) / lastW : 1;
-    const dh = lastH ? Math.abs(cr.height - lastH) / lastH : 1;
-    lastW = cr.width;
-    lastH = cr.height;
 
-    if (dw < 0.03 && dh < 0.03) return;
 
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(rerenderContain);
-  };
-
-  const ro = new ResizeObserver(onResizeObserved);
-  ro.observe(containerRef.current);
-
-  return () => {
-    ro.disconnect();
-    cancelAnimationFrame(raf);
-  };
-}, [containerRef, engineRef]);
-*/
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col min-h-0">
-      <Card className="m-4 sm:m-6 md:m-8 bg-neutral-900/60 border-neutral-800 shadow-none flex-1 flex flex-col min-h-0">
-        
-
-        <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden min-h-0">
-          {/* 상단 컨트롤바 */}
+    <div className="min-h-screen bg-neutral-900 text-neutral-100 flex-1 flex flex-col">
+      <Card className="m-4 sm:m-6 md:m-8 bg-neutral-900/60 border-neutral-800 shadow-none flex-1 flex flex-col">
+        <CardContent className="p-4 sm:p-6 flex-1 flex flex-col gap-4 overflow-hidden">
           <div className="flex flex-col md:flex-row items-center gap-3 justify-between">
-            {/* 레이아웃 선택 */}
-            <Select
-              value={`${layout.rows}x${layout.cols}`}
-              onValueChange={(val) => {
-                const [r, c] = val.split("x").map(Number);
-                applyLayout(r, c);
-              }}
-            >
-              <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
-                <SelectValue placeholder="레이아웃" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
-                <SelectItem value="1x1">1x1</SelectItem>
-                <SelectItem value="2x2">2x2</SelectItem>
-                <SelectItem value="3x3">3x3</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-3">
+              {/* 레이아웃 선택 */}
+              <Select
+                value={`${layout.rows}x${layout.cols}`}
+                onValueChange={(val) => {
+                  const [r, c] = val.split("x").map(Number);
+                  applyLayout(r, c);
+                }}
+              >
+                <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
+                  <SelectValue placeholder="레이아웃" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
+                  <SelectItem value="1x1">1x1</SelectItem>
+                  <SelectItem value="2x2">2x2</SelectItem>
+                  <SelectItem value="3x3">3x3</SelectItem>
+                </SelectContent>
+              </Select>
 
-            
+              {/* 시리즈 선택 */}
+              <Select
+                value={selectedSeriesKey.toString()}
+                onValueChange={(val) => setSelectedSeriesKey(Number(val))}
+              >
+                <SelectTrigger className="w-full md:w-[120px] bg-neutral-800 border-neutral-700">
+                  <SelectValue placeholder="시리즈 선택" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-800 border-neutral-700 text-neutral-100">
+                  {study?.series?.map((series: any) => (
+                    <SelectItem key={series.seriesKey} value={series.seriesKey.toString()}>
+                      {`Series ${series.seriesKey}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <Toolbar
               toolGroupId={toolGroupId}
               renderingEngineId={renderingEngineId}
               viewportId={activeViewportId ?? viewportId[0]}
               studyKey={studyKey}
-              seriesKey={startSeriesKey}
+              seriesKey={selectedSeriesKey.toString()}  // 숫자 값을 문자열로 변환
             />
           </div>
 
-          {/* 뷰포트 그리드 */}
           <div
             ref={containerRef}
             onContextMenu={(e) => e.preventDefault()}
-            className="
-              w-full flex-1 min-h-0 grid overflow-hidden
-              rounded-xl border border-neutral-800
-              bg-neutral-800           /* ← 갭(구분선) 색 */
-              gap-[2px]                
-            "
+            className="w-full h-full min-h-[1080px] grid overflow-hidden
+                        rounded-xl border border-neutral-800
+                        bg-neutral-800 gap-[2px]"
             style={{
               gridTemplateRows: `repeat(${layout.rows}, 1fr)`,
               gridTemplateColumns: `repeat(${layout.cols}, 1fr)`,
-              
             }}
           />
-
         </CardContent>
       </Card>
 
-      {/* 각 뷰포트 메타데이터 오버레이 */}
       {containerRef.current &&
         Object.entries(firstImgByVp).map(([vpId, imgId]) => {
           const host = getOverlayHost(containerRef.current!, vpId);
@@ -279,5 +289,4 @@ export default function DicomViewer({ studyKey }: Props) {
         })}
     </div>
   );
-
 }
