@@ -10,7 +10,10 @@ export default function useSeriesStack(engineRef: React.MutableRefObject<any>) {
         const re = engineRef.current;
         const vp = re.getViewport(viewportId) as Types.IStackViewport;
         await vp.setStack(imageIds, 0);
-        vp.render();
+
+        (vp as any).resize?.({ useDevicePixelRatio: true});
+        vp.resetCamera();
+        vp.render?.();
     }, [engineRef]);
 
     return { setStackToViewport };
